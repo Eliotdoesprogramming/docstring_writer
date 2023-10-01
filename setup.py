@@ -16,7 +16,9 @@ setup(
     name="docstring_writer",
     version="0.0.1",
     long_description_content_type="text/markdown",
-    packages=find_packages(),
+    packages=find_packages(
+        exclude=['*.tests', '*.tests.*', 'tests.*', 'tests']
+    ),
     install_requires=reqs,
     python_requires=">=3.8",
 )

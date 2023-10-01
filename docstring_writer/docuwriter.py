@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 import logging
 class hfAPIModule:
@@ -13,35 +14,55 @@ class hfAPIModule:
 class hfAPIDocuWriter(hfAPIModule):
     def __init__(self):
         super().__init__()
-    def add_documentation_to_function(self, text, ):
-        output = open(os.path.join(
+        self.template = open(os.path.join(
             os.path.dirname(__file__),'templates', 'function_docstring.txt')
             ,'r').read()
+    def add_documentation_to_function(self, text, ):
+        output = self.template.format(user_message=text)
         len_template = len(output)
-        output = output.format(user_message=text)
-        while "###AI-END-DOC###" not in output[-20:]:
+        output = [{"generated_text": output}]
+
+        while "###AI-END-DOC###" not in output[-10:]:
             output = self.query({
                 "inputs": output[0]['generated_text'],
             })
-        documented_fn_txt = output['generated_text'][len_template:]
+        documented_fn_txt = output[0]['generated_text'][len_template:]
         logging.info("documented function output: "+documented_fn_txt)
         return documented_fn_txt
 
 
 class hfAPIDocuChunker(hfAPIModule):
+    retries = 0
     def __init__(self):
         super().__init__()
-    def make_chunk(self, text):
-        output = open(os.path.join(
-            os.path.dirname(__file__),'templates', 'chunker_docstring.txt')
+        self.template = open(os.path.join(
+            os.path.dirname(__file__),'templates', 'file_chunker3.txt')
             ,'r').read()
+    def make_chunk(self, text):
+        output = self.template.format(user_message=text)
         len_template = len(output)
-        output = output.format(user_message=text)
-        while "###AI-END-DOC###" not in output[-20:]:
-            output = self.query({
-                "inputs": output[0]['generated_text'],
-            })
-        chunk = output['generated_text'][len_template:]
+        prev_len = 0
+        output = [{"generated_text": output}]
+        try:
+            while len(output[0]['generated_text']) != prev_len:
+                prev_len = len(output[0]['generated_text'])
+                output = self.query({
+                    "inputs": output[0]['generated_text'],
+                    "wait_for_model":True
+                })
+        except Exception as e:
+            logging.error(e)
+            logging.error(output)
+            if 'estimated_time' in output.keys():
+                self.retries +=1
+                if self.retries < 3:
+                    time.sleep(output['estimated_time'])
+                    self.make_chunk(text)
+                else:
+                    raise e
+            else:
+                raise e
+        chunk = output[0]['generated_text'][len_template:]
         logging.info("documented chunk output: "+chunk)
         return chunk
     def chunk_file(self, file_path):
