@@ -1,6 +1,5 @@
 import os
 import requests
-from docstring_writer import template_path
 import logging
 class hfAPIDocuWriter:
     def __init__(self):
@@ -9,7 +8,9 @@ class hfAPIDocuWriter:
         self.headers = {"Authorization": "Bearer " + self.HF_API_KEY}
         self.API_URL = "https://api-inference.huggingface.co/models/"+self.HF_MODEL
     def add_documentation_to_function(self, text, ):
-        output = open(os.path.join(template_path, 'function_docstring.txt','r')).read()
+        output = open(os.path.join(
+            os.path.dirname(__file__),'templates', 'function_docstring.txt')
+            ,'r').read()
         len_template = len(output)
         output = output.format(user_message=text)
         while "###AI-END-DOC###" not in output[-20:]:
